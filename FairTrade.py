@@ -2,6 +2,7 @@
 import torch
 import math
 import argparse
+import random
 from utilities import find_ate, find_ate_2, find_statistical_parity_score, find_eqop_score, all_metrics
 from load_data_utilities import get_data, load_dataset
 from constraint import AverageTreatmentEffectLoss, DemographicParityLoss
@@ -46,7 +47,11 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import (
 )
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="pass the following arguments: dataset_name, number of clients, fairness notion, number of communication rounds.")
-device = torch.device('mps')
+parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility. Default is 42.")
+
+# device = torch.device('mps')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f'Using device: {device}')
 '''
 #logistic regression model
 def create_model(input_dim):
@@ -109,6 +114,12 @@ epochs = args.epochs
 communication_rounds = args.communication_rounds
 mobo_optimization_rounds = args.mobo_optimization_rounds
 distribution_type = args.distribution_type
+
+random.seed(args.seed)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(args.seed)
 
 if dataset_name == 'adult':
     url = './datasets/adult.csv'
@@ -265,9 +276,9 @@ for round in range(communication_rounds):
 
     #objectives = evaluate(alpha)
     if round == 0:
-        objectives, bal_acc_, fairness_notion_ = evaluate(alpha)
+        objectives = evaluate(alpha)
     else:
-        objectives, bal_acc_, fairness_notion_ = evaluate(updated_alpha, updated_lr)
+        objectives = evaluate(updated_alpha, updated_lr)
     fairness_notion_list.append(objectives[0,0].item())
     bal_acc_list.append(objectives[0,1].item())
     
@@ -373,3 +384,19 @@ else:
     else:
         np.save(destination+dataset_name+'/'+str(num_clients)+'_attr_bal_acc_ate.npy', np.array(bal_acc_list))
         np.save(destination+dataset_name+'/'+str(num_clients)+'_attr_ate.npy', np.array(fairness_notion_list))
+
+# Save the trained global model + run metadata so downstream evaluation scripts
+# (e.g. intersectional fairness analysis) can reuse it without retraining.
+distribution_tag = 'random' if distribution_type == 'random' else 'attr'
+checkpoint_name = f'{num_clients}_model_{distribution_tag}_{fairness_notion}.pt'
+torch.save({
+    'model_state_dict': global_model.state_dict(),
+    'column_names_list': column_names_list,
+    'sensitive_feature': sensitive_feature,
+    'dataset_name': dataset_name,
+    'num_clients': num_clients,
+    'fairness_notion': fairness_notion,
+    'distribution_type': distribution_type,
+    'seed': args.seed,
+}, destination + dataset_name + '/' + checkpoint_name)
+print(f'Saved trained model checkpoint to {destination}{dataset_name}/{checkpoint_name}')

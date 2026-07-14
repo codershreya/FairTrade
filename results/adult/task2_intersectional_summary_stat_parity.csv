@@ -1,0 +1,9 @@
+group,attribute,selection_rate,n
+Female,gender,0.4793311658151417,2153
+Male,gender,0.5091743119266054,4360
+Non-White,race,0.34285714285714286,945
+White,race,0.5258620689655172,5568
+Non-White Female,intersection,0.33966745843230406,421
+Non-White Male,intersection,0.34541984732824427,524
+White Female,intersection,0.5132794457274826,1732
+White Male,intersection,0.5315432742440042,3836

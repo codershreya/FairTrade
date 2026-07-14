@@ -7,7 +7,7 @@ class ConstraintLoss(nn.Module):
     def __init__(self, n_class=2, alpha=1, p_norm=2):
         super(ConstraintLoss, self).__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.alpha = alpha
+        self.alpha = alpha.to(self.device) if isinstance(alpha, torch.Tensor) else alpha
         self.p_norm = p_norm
         self.n_class = n_class
         self.n_constraints = 2
