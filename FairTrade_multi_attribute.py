@@ -1,17 +1,17 @@
+"""Task 3: FairTrade extended to jointly optimize fairness for two sensitive attributes
+(default: gender + race on the Adult dataset).
 
-# Task 3: FairTrade extended to jointly optimize fairness for two sensitive attributes
-# (default: gender + race on the Adult dataset).
-#
-# Design: the client-side fairness penalty becomes max(DP_loss(gender), DP_loss(race)) --
-# whichever attribute the current model discriminates against more heavily dominates the
-# gradient. The server-side multi-objective Bayesian optimization is otherwise unchanged:
-# it still optimizes two objectives (balanced accuracy, -discrimination score), where
-# discrimination score is now max(|SPD_gender|, |SPD_race|) instead of a single SPD. This
-# keeps the existing, already-verified 2D GP/qEHVI machinery from FairTrade.py untouched --
-# only the definition of "discrimination score" changes to cover both attributes.
-#
-# This is a copy of FairTrade.py with the fairness computation extended; Task 1/2 code
-# (FairTrade.py) is left untouched so its results stay reproducible.
+Design: the client-side fairness penalty becomes max(DP_loss(gender), DP_loss(race)) --
+whichever attribute the current model discriminates against more heavily dominates the
+gradient. The server-side multi-objective Bayesian optimization is otherwise unchanged:
+it still optimizes two objectives (balanced accuracy, -discrimination score), where
+discrimination score is now max(|SPD_gender|, |SPD_race|) instead of a single SPD. This
+keeps the existing, already-verified 2D GP/qEHVI machinery from FairTrade.py untouched --
+only the definition of "discrimination score" changes to cover both attributes.
+
+This is a copy of FairTrade.py with the fairness computation extended; Task 1/2 code
+(FairTrade.py) is left untouched so its results stay reproducible.
+"""
 
 import torch
 import argparse
@@ -59,6 +59,7 @@ if torch.cuda.is_available():
 
 
 def create_model(input_dim):
+    """3-layer MLP (64-32-1, ReLU/Sigmoid), matching FairTrade.py's base learner exactly."""
     return nn.Sequential(
         nn.Linear(input_dim, 64),
         nn.ReLU(),
@@ -108,11 +109,17 @@ cost_false_positives = 1.0
 
 
 def calculate_weights(targets, cost_false_negatives=5):
+    """Per-sample BCE weight: positive-class samples cost more to misclassify (class imbalance)."""
     cost_false_negatives = 10
     return torch.where(targets == 1, cost_false_negatives, cost_false_positives)
 
 
 def evaluate(alpha=100, lr=0.001, cost_false_negatives=5):
+    """One MOBO-candidate evaluation: trains all clients for `epochs` with (alpha, lr),
+    federated-averages the resulting models into global_model, then evaluates it on the
+    held-out test set. Returns the (–disc_score, balanced_accuracy) objective pair used by
+    the server-side Bayesian optimization, plus the individual gender/race SPD for logging.
+    """
     params = [torch.zeros_like(param.data) for param in global_model.parameters()]
     for client_name in clients_data.keys():
         print(client_name)

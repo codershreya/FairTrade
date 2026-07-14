@@ -27,6 +27,8 @@ CATEGORICAL = ['#2a78d6', '#1baf7a', '#eda100', '#008300']  # blue, aqua, yellow
 
 
 def create_model(input_dim):
+    """3-layer MLP (64-32-1, ReLU/Sigmoid), matching FairTrade.py's base learner exactly
+    so the saved state_dict loads correctly."""
     return nn.Sequential(
         nn.Linear(input_dim, 64),
         nn.ReLU(),
@@ -46,6 +48,9 @@ def signed_spd(y_pred_cls, group_mask):
 
 
 def main():
+    """Loads a trained FairTrade checkpoint, reconstructs its exact test split, and reports
+    gender-only, race-only, and intersectional (4-subgroup) Statistical Parity Difference --
+    saving a summary table (CSV) and comparison bar chart (PNG) under results/<dataset>/."""
     parser = argparse.ArgumentParser(description="Task 2: intersectional fairness evaluation.")
     parser.add_argument("--dataset_name", type=str, default="adult")
     parser.add_argument("--num_clients", type=int, default=3)
