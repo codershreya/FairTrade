@@ -60,7 +60,7 @@ wherever possible so the original single-attribute pipeline stays unchanged and 
 
 | File | Status | Purpose |
 |---|---|---|
-| `FairTrade.py` | modified | GPU auto-detection (`cuda` if available, else `cpu`); `--seed` argument for reproducibility; saves a model checkpoint (`results/<dataset>/<n>_model_<split>_<notion>.pt`) at the end of training |
+| `FairTrade.py` | modified | GPU auto-detection (`cuda` if available, else `cpu`); `--seed` argument for reproducibility; saves a model checkpoint (`results/<dataset>/<n>_model_<split>_<notion>.pt`) at the end of training; fixes a return-value/unpacking mismatch in the main loop that made the original repo raise `ValueError` on the first communication round (see Task 4 in the report) |
 | `constraint.py` | modified | Fixed a CPU/GPU device-mismatch bug in `ConstraintLoss.__init__` (see Task 4 in the report) |
 | `task2_intersectional_fairness.py` | new (Task 2) | Loads a trained checkpoint and evaluates SPD for gender alone, race alone, and their 4-way intersection using `fairlearn` |
 | `FairTrade_multi_attribute.py` | new (Task 3) | FairTrade extended to jointly optimize fairness for gender **and** race (`max(SPD_gender, SPD_race)`) |
@@ -100,8 +100,11 @@ python task3_comparison_chart.py
 Saves `results/adult/task3_before_after_comparison.png`.
 
 ### Task 4 — Code Review & Bug Hunt
-No script to run — see the PDF report for the write-up (a train/test feature-scaling
-leakage issue in `load_data_utilities.py`, plus two bugs found and fixed during Tasks 1–3).
+No script to run — see the PDF report for the full write-up. Primary finding: a train/test
+feature-scaling leakage issue in `load_data_utilities.py` (`StandardScaler` fit before the
+train/test split, present in all five dataset loaders). Also documents three bugs found and
+fixed while completing Tasks 1–3: a return-value/unpacking mismatch that made the original
+repo crash on its first run, a CPU/GPU device-mismatch bug, and a missing reproducibility seed.
 
 ## Citation Request
 If you find this work useful in your research, please consider citing:
